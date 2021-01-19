@@ -48,6 +48,10 @@ Modern cameras use a lense that causes distortion around the edges of the image.
   <source src="./output_images/test1.mp4" type="video/mp4">
 </video>
 
+![](./output_images/test1.mp4)
+
+[Processed Video](./output_images/test1.mp4)
+
 ### 4. Improvements
 - Keep track of recent measures of curvature so the lane can be corrected if a few stray pixels pull the lane the wrong direction
 - Increase the sanity check to find only the vertical lines that start somewhere on the path of the last. This will not solve the challenge of not picking up vertical lines on the road but it will help
