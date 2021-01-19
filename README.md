@@ -1,39 +1,55 @@
-## Advanced Lane Finding
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-![Lanes Image](./examples/example_output.jpg)
+# **Finding Lane Lines on the Road** 
 
-In this project, your goal is to write a software pipeline to identify the lane boundaries in a video, but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
-
-Creating a great writeup:
----
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
-
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
-
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup.
-
-The Project
 ---
 
-The goals / steps of this project are the following:
 
-* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
-* Apply a distortion correction to raw images.
-* Use color transforms, gradients, etc., to create a thresholded binary image.
-* Apply a perspective transform to rectify binary image ("birds-eye view").
-* Detect lane pixels and fit to find the lane boundary.
-* Determine the curvature of the lane and vehicle position with respect to center.
-* Warp the detected lane boundaries back onto the original image.
-* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
+## Goals
+* Make a pipeline that reliably (90%) draws lane lines on the road
 
-The images for camera calibration are stored in the folder called `camera_cal`.  The images in `test_images` are for testing your pipeline on single frames.  If you want to extract more test images from the videos, you can simply use an image writing method like `cv2.imwrite()`, i.e., you can read the video in frame by frame as usual, and for frames you want to save for later you can write to an image file.  
+[//]: # (Image References)
 
-To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `output_images`, and include a description in your writeup for the project of what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
+[image1]: ./examples/grayscale.jpg "Grayscale"
 
-The `challenge_video.mp4` video is an extra (and optional) challenge for you if you want to test your pipeline under somewhat trickier conditions.  The `harder_challenge.mp4` video is another optional challenge and is brutal!
+---
 
-If you're feeling ambitious (again, totally optional though), don't stop there!  We encourage you to go out and take video of your own, calibrate your camera and show us how you would implement this project from scratch!
+## Reflection
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+### 1. Camera Calibration
+Modern cameras use a lense that causes distortion around the edges of the image. This can be undistorted with some math and images of a well known object, in this case, a chessboard <p align="center"><img src="./camera_cal/calibration2.jpg" width="350"></p>
+- Find object points by creating a grid to overlay the chessboard
+- Find image points by detecting the internal corners of the chessboard using `cv2.findChessboardCorners()` <p align="center"><img src="./output_images/origCalibrationImage.png"></p>
+- Calibrate the camera using the object and image points with `cv2.calibrateCamera()` <p align="center"><img src="./output_images/calibrationImage.png"></p>
 
+
+### 2. Pipeline
+1. Undistort image <p align="center"><img src="./output_images/undistImage.png"></p>
+2. Create a binary image using color transforms and gradient thresholds using `createBinary()` 
+    - Convert the image to HLS color space, then find where the image has the greatest change (gradient) in lightness 
+    - Perform a Sobel derivative in the X direction
+    - Combine the two into a binary mask <p align="center"><img src="./output_images/binaryImg.png"></p>
+3. Region of interest masking <p align="center"><img src="./output_images/roiImg.png"></p>
+4. Perspective tranform to get a birds eye view of the image `birdsEyeView()`
+    - Designate source (original image) points using the region of interest vertices
+    - Designate destination (transformed image) points using the farthest corners of the image 
+    - Calculate the perspective transform matrix with `cv2.getPerspectiveTransform(srcPts, dstPts)`
+    - Perform the transform with `cv2.warpPerspective()` using linear interpolation <p align="center"><img src="./output_images/warpedImage.png"></p>
+5. Fit a polynomial to the identified lane pixels `fit_polynomial()` 
+    - Find the lane pixels first with the moving window method and then with a look ahead method where you search in the vicinity of the last found line `find_lane_pixels()` and `search_around_poly()`
+    - Fit the pixels with a second order polynomial <p align="center"><img src="./output_images/fittedLaneLines.png"></p>
+6. Calculate line characteristics `measure_lines_in_meters()` 
+    - Find a conversion from pixels to meters, ideally this would be automatic, but here it is hardcoded from a test image as the dimensions of the lane 
+    - Find the base of the lane nearest the bottom of the image relative to the center of the car (image) using the pixel conversion stated above
+    - Calculate the radius of curvature using <p align="center"><img src="./output_images/RadiusOfCurvature.png"></p>
+7. Draw the final lane lines on original image `drawInfoOnRoad()` <p align="center"><img src="./output_images/processedImage.png"></p>
+
+
+### 3. The Guided Video
+<video width="320" height="240" controls>
+  <source src="./output_images/test1.mp4" type="video/mp4">
+</video>
+
+### 4. Improvements
+- Keep track of recent measures of curvature so the lane can be corrected if a few stray pixels pull the lane the wrong direction
+- Increase the sanity check to find only the vertical lines that start somewhere on the path of the last. This will not solve the challenge of not picking up vertical lines on the road but it will help
+- Use a Sobel gradient in the Y direction to identify vertical lines wide enough to be lane lines
+- Overall better tuning, filtering, and sanity checks/stored data
